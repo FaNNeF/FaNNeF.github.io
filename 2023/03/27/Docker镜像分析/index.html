@@ -1,0 +1,668 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="FanneF">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="一、镜像结构： 镜像分为底层驱动bootfs，当成为容器启动后会被加载进入内存然后会被unmount掉，BaseImage为rootfs存储了系统根目录系统，出了writable层其他层都是不可写的只可读，当在容器态修改底层文件内容，docker文件驱动会将旧文件拷贝一份到writable层，然后下层文件进行屏蔽处理。启动镜像是读取子镜像层是由上至下读取的，保证读取的文件是最新的。 可以通过doc">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Docker镜像分析">
+<meta property="og:url" content="http://example.com/2023/03/27/Docker%E9%95%9C%E5%83%8F%E5%88%86%E6%9E%90/index.html">
+<meta property="og:site_name" content="FanneF">
+<meta property="og:description" content="一、镜像结构： 镜像分为底层驱动bootfs，当成为容器启动后会被加载进入内存然后会被unmount掉，BaseImage为rootfs存储了系统根目录系统，出了writable层其他层都是不可写的只可读，当在容器态修改底层文件内容，docker文件驱动会将旧文件拷贝一份到writable层，然后下层文件进行屏蔽处理。启动镜像是读取子镜像层是由上至下读取的，保证读取的文件是最新的。 可以通过doc">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/Docker%E9%95%9C%E5%83%8F%E5%88%86%E6%9E%90/WEBRESOURCEa8e683cbf4ef28ef1d0bad74d7888080.png">
+<meta property="og:image" content="http://example.com/Docker%E9%95%9C%E5%83%8F%E5%88%86%E6%9E%90/WEBRESOURCE345586d3a4df28fff5cbe6c76f141627.png">
+<meta property="article:published_time" content="2023-03-27T15:32:25.000Z">
+<meta property="article:modified_time" content="2023-03-27T15:40:25.653Z">
+<meta property="article:author" content="FanneF">
+<meta property="article:tag" content="云安全">
+<meta property="article:tag" content="Docker">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://example.com/Docker%E9%95%9C%E5%83%8F%E5%88%86%E6%9E%90/WEBRESOURCEa8e683cbf4ef28ef1d0bad74d7888080.png">
+  
+  
+  
+  <title>Docker镜像分析 - FanneF</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"example.com","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 5.4.2"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>FanneF</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                <span>标签</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                <span>关于</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Docker镜像分析"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2023-03-27 23:32" pubdate>
+          2023年3月27日 晚上
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          6.4k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          54 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Docker镜像分析</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h2 id="一、镜像结构："><a href="#一、镜像结构：" class="headerlink" title="一、镜像结构："></a>一、镜像结构：</h2><p><img src="/Docker%E9%95%9C%E5%83%8F%E5%88%86%E6%9E%90/WEBRESOURCEa8e683cbf4ef28ef1d0bad74d7888080.png" srcset="/img/loading.gif" lazyload></p>
+<p>镜像分为底层驱动bootfs，当成为容器启动后会被加载进入内存然后会被unmount掉，BaseImage为rootfs存储了系统根目录系统，出了writable层其他层都是不可写的只可读，当在容器态修改底层文件内容，docker文件驱动会将旧文件拷贝一份到writable层，然后下层文件进行屏蔽处理。启动镜像是读取子镜像层是由上至下读取的，保证读取的文件是最新的。</p>
+<p>可以通过docker history命令来查看镜像层：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><code class="hljs javascript">root@<span class="hljs-attr">ubuntu</span>:<span class="hljs-regexp">/var/</span>lib/docker/containers/9f2244a9fd11c8dc53c43fb46fb7864e93afc28a4b491262a88dc9fe168e2367# docker history tomcat<br><span class="hljs-variable constant_">IMAGE</span>               <span class="hljs-variable constant_">CREATED</span>             <span class="hljs-variable constant_">CREATED</span> <span class="hljs-variable constant_">BY</span>                                      <span class="hljs-variable constant_">SIZE</span>                <span class="hljs-variable constant_">COMMENT</span><br>46cfbf1293b1        <span class="hljs-number">12</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">CMD</span> [<span class="hljs-string">&quot;catalina.sh&quot;</span> <span class="hljs-string">&quot;run&quot;</span>]    0B                  <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">EXPOSE</span> <span class="hljs-number">8080</span>                  0B                  <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c set -eux;  nativeLines=<span class="hljs-string">&quot;$(catalin…   0B                  </span><br><span class="hljs-string">&lt;missing&gt;           12 days ago         /bin/sh -c set -eux;   savedAptMark=&quot;</span>$(apt-m…   <span class="hljs-number">20.</span>3MB              <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">ENV</span> <span class="hljs-variable constant_">TOMCAT_SHA512</span>=06cd51a…   0B                  <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">ENV</span> <span class="hljs-variable constant_">TOMCAT_VERSION</span>=<span class="hljs-number">9.0</span><span class="hljs-number">.50</span>    0B                  <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">ENV</span> <span class="hljs-variable constant_">TOMCAT_MAJOR</span>=<span class="hljs-number">9</span>           0B                  <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">ENV</span> <span class="hljs-variable constant_">GPG_KEYS</span>=48F8E69F6390…   0B                  <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">ENV</span> <span class="hljs-variable constant_">LD_LIBRARY_PATH</span>=<span class="hljs-regexp">/usr/</span>…   0B                  <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">ENV</span> <span class="hljs-variable constant_">TOMCAT_NATIVE_LIBDIR</span>=…   0B                  <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c #(nop) <span class="hljs-variable constant_">WORKDIR</span> /usr/local/tomcat     0B                  <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c mkdir -p <span class="hljs-string">&quot;$CATALINA_HOME&quot;</span>            0B                  <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">ENV</span> <span class="hljs-variable constant_">PATH</span>=<span class="hljs-regexp">/usr/</span>local/tomca…   0B                  <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">ENV</span> <span class="hljs-variable constant_">CATALINA_HOME</span>=<span class="hljs-regexp">/usr/</span>lo…   0B                  <br>&lt;missing&gt;           <span class="hljs-number">13</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">CMD</span> [<span class="hljs-string">&quot;jshell&quot;</span>]               0B                  <br>&lt;missing&gt;           <span class="hljs-number">13</span> days ago         /bin/sh -c set -eux;   arch=<span class="hljs-string">&quot;$(dpkg --print-…   343MB               </span><br><span class="hljs-string">&lt;missing&gt;           13 days ago         /bin/sh -c #(nop)  ENV JAVA_VERSION=11.0.12     0B                  </span><br><span class="hljs-string">&lt;missing&gt;           13 days ago         /bin/sh -c #(nop)  ENV LANG=C.UTF-8             0B                  </span><br><span class="hljs-string">&lt;missing&gt;           13 days ago         /bin/sh -c #(nop)  ENV PATH=/usr/local/openj…   0B                  </span><br><span class="hljs-string">&lt;missing&gt;           13 days ago         /bin/sh -c &#123; echo &#x27;#/bin/sh&#x27;; echo &#x27;echo &quot;</span>$J…   27B                 <br>&lt;missing&gt;           <span class="hljs-number">13</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">ENV</span> <span class="hljs-variable constant_">JAVA_HOME</span>=<span class="hljs-regexp">/usr/</span>local/…   0B                  <br>&lt;missing&gt;           <span class="hljs-number">13</span> days ago         /bin/sh -c set -eux;  apt-get update;  apt-g…   <span class="hljs-number">11.</span>1MB              <br>&lt;missing&gt;           <span class="hljs-number">2</span> weeks ago         /bin/sh -c apt-get update &amp;&amp; apt-get install…   146MB               <br>&lt;missing&gt;           <span class="hljs-number">2</span> weeks ago         /bin/sh -c set -ex;  <span class="hljs-keyword">if</span> ! command -v gpg &gt; /…   <span class="hljs-number">17.</span>5MB              <br>&lt;missing&gt;           <span class="hljs-number">2</span> weeks ago         /bin/sh -c set -eux;  apt-get update;  apt-g…   <span class="hljs-number">16.</span>5MB              <br>&lt;missing&gt;           <span class="hljs-number">2</span> weeks ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">CMD</span> [<span class="hljs-string">&quot;bash&quot;</span>]                 0B                  <br>&lt;missing&gt;           <span class="hljs-number">2</span> weeks ago         /bin/sh -c #(nop) <span class="hljs-variable constant_">ADD</span> <span class="hljs-attr">file</span>:e952f6979e4b0ead0…   114MB               <br></code></pre></td></tr></table></figure>
+
+<p>一般从docker仓库拉取下来的子镜像层ID都为<missing>，但我们自己创建的镜像则是有子镜像层ID的。</p>
+<p>我们也可以通过查看docker文件系统目录来查看镜像信息:(这里以overlay2文件存储驱动为例)</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs javascript">root@<span class="hljs-attr">ubuntu</span>:<span class="hljs-regexp">/var/</span>lib/docker/image/overlay2/imagedb/content/sha256/镜像<span class="hljs-variable constant_">ID</span>（这里的<span class="hljs-variable constant_">ID</span>与docker images里的镜像一致）<br></code></pre></td></tr></table></figure>
+
+<p>这个json文件存储里镜像的所有操作记忆rootfs的子镜像层。</p>
+<h2 id="二、子镜像层"><a href="#二、子镜像层" class="headerlink" title="二、子镜像层"></a>二、子镜像层</h2><p>查询子镜像层，可通过overlay文件系统目录查询：（还有一种在打包镜像的那个栏目中提及）</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><code class="hljs javascript">root@<span class="hljs-attr">ubuntu</span>:<span class="hljs-regexp">/var/</span>lib/docker/overlay2# ls<br>034932a05e2615e6665be7c2c924c33ae38f849b54510f828152b0686f49e3c7<br>0dfa1abb8e56c8be300f5dd4086a3d8eaa921afa94f2fec2089e382e3678cf1f<br>14bfdf5f04751a90f0d8c17b909c321723c09d39622ef1ff9304f6a6177d3f9a<br>1d0dbb5b4d588440fe2a089b9c3cd06b134c4520f67f7ac7f4e5864ab661f2da<br>1d3f27228a5f942b3299859ab4cd6d139eb739b795e4605456144eebfe65241c<br>251d6c3825fa93e16f8319a14cf84720b1eadc35eb8396bad50d157602e5ff8a<br>29e8e1ee22646dea3203a7eed91e9979be655b3dd10f9cad9e87062b571cd545<br>2ae86148901fbde20f7aab0b1a3b675aa73d3ce75e9b5b2144895b852e15fc5a<br>2b340cb26c4f7566fdaf47a6cc258c92dd0aa4d1a67258a219d50a617c508642<br>37a99f751233eaca857347f61075fbd83a46d899994ba2d15744d74a492ead80<br>4f8e610e830a3f8a307dc96b149c58e75472feebb6087fc945e6f06f3e773fa6<br>535d338ea90554c5b788936f94fbaaa8860ac3587e9c4adf28fccc0f9ba38409<br>53ab98fca768e9d1b86d85616c71ec93d0ee5a4ad86061f9a3a215b69c3246b8<br>58bff18ee2d0d1433c101d9e96f16a0d801975a3f81db84c0ff9a9f7364c9c60<br>642e463f3597e3eade330a6d7db00d10d54034d9fed6b48921d2b081ba05815d<br>696cc70befcb80a81c8c178263f4651059a2ea3f601fdb194089e8ff30e7cdc8<br>75419a832a2717cfe1a0cd2424c7f14c2130a6253ddc7d3d238520145a15ad34<br>88f84ce826c70d00a0d5c52c9adc323efd99b6e99572d6a08ab992912dce0a15<br>8d49811c801202c1f3214cf2ef7b486048a533cb2b4480770c96bdf802cfb852<br>8f9748ad9bdd1232ec8f60729d90055a9e1bb37611aae247939cda15a20995fa<br>934781a321cb6dba0171392b8eb03aadfc5ba83938d8957b789dd1043b39e71f<br></code></pre></td></tr></table></figure>
+
+<p>这全都是子镜像层，他们是杂乱的不知道哪个子镜像属于哪个镜像，可以通过索引来看子镜像层属于哪个镜像，上文中查看镜像ID所有内容的json文件中rootfs的子镜像为例，拿到子镜像ID，通过这个文件夹中的两个目录</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs javascript">root@<span class="hljs-attr">ubuntu</span>:<span class="hljs-regexp">/var/</span>lib/docker/image/overlay2/distribution# ls<br>diffid-by-digest  v2metadata-by-diffid<br></code></pre></td></tr></table></figure>
+
+<p>互相查询索引，具体操作如下：</p>
+<p>1、拿着子镜像层ID去v2metadata-by-diffid这个里面查询出一个号码</p>
+<p>2、再拿着那个号码去diffid-by-digest这个里面拿一个号码</p>
+<p>3、通过最终拿到的这个号码去下面的文件目录查询出一个子镜像层文件夹，里面存储着子镜像的一些描述信息（不是元文件），可以通过cache-id索引到&#x2F;var&#x2F;lib&#x2F;docker&#x2F;overlay2这个文件夹下的子镜像层。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs javascript">root@<span class="hljs-attr">ubuntu</span>:<span class="hljs-regexp">/var/</span>lib/docker/image/overlay2/layerdb/sha256/号码<span class="hljs-variable constant_">ID</span><br>root@<span class="hljs-attr">ubuntu</span>:<span class="hljs-regexp">/var/</span>lib/docker/image/overlay2/layerdb/sha256/02c055ef67f5904019f43a41ea5f099996d8e7633749b6e606c400526b2c4b33# ls<br>cache-id  diff  size  tar-split.<span class="hljs-property">json</span>.<span class="hljs-property">gz</span><br></code></pre></td></tr></table></figure>
+
+<p>终结上面的寻找小插曲，继续介绍&#x2F;var&#x2F;lib&#x2F;docker&#x2F;overlay2这个目录下的文件夹，他们都是每一子镜像层的元数据文件。这些元数据文件都存储在diff文件夹下（每一层修改的文件）</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs javascript">root@<span class="hljs-attr">ubuntu</span>:<span class="hljs-regexp">/var/</span>lib/docker/overlay2# cd 034932a05e2615e6665be7c2c924c33ae38f849b54510f828152b0686f49e3c7/<br>root@<span class="hljs-attr">ubuntu</span>:<span class="hljs-regexp">/var/</span>lib/docker/overlay2/034932a05e2615e6665be7c2c924c33ae38f849b54510f828152b0686f49e3c7# ls<br>diff  link  lower  work<br>root@<span class="hljs-attr">ubuntu</span>:<span class="hljs-regexp">/var/</span>lib/docker/overlay2/034932a05e2615e6665be7c2c924c33ae38f849b54510f828152b0686f49e3c7/diff# ls<br>etc  lib  tmp  usr  <span class="hljs-keyword">var</span><br></code></pre></td></tr></table></figure>
+
+<p>我们可以看到这一子镜像层肯定是改了etc、lib、tmp、usr、var这些文件夹中的文件了。</p>
+<h2 id="三、镜像打包"><a href="#三、镜像打包" class="headerlink" title="三、镜像打包"></a>三、镜像打包</h2><p>我们可以先通过docker save命令将镜像打包成一个压缩包：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs javascript">fanxinyu@<span class="hljs-attr">ubuntu</span>:~$ docker save -o /home/fanxinyu/tocmat.<span class="hljs-property">tar</span> 46cfbf1293b1<br></code></pre></td></tr></table></figure>
+
+<p>然后我们查看压缩包中内容就是一个镜像中所有的层，并且还有一个叫做manifest.json的描述文件存储着层的顺序结构</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs javascript">[&#123;<span class="hljs-string">&quot;Config&quot;</span>:<span class="hljs-string">&quot;46cfbf1293b176161813fa05bb8f7e82df1ec7def5c226c48bc48a60ed305ac7.json&quot;</span>,<span class="hljs-string">&quot;RepoTags&quot;</span>:<span class="hljs-literal">null</span>,<br><span class="hljs-string">&quot;Layers&quot;</span>:[<span class="hljs-string">&quot;ce945bc5d9976d3bb3406718003bec9354e498bb5aac8a53af6cb9f744e0d8e8/layer.tar&quot;</span>,<br><span class="hljs-string">&quot;e88600dc945c0c6ac9c53a7341eaed1eaaa4a74f68b207cd4eeaa70e64781da1/layer.tar&quot;</span>,<br><span class="hljs-string">&quot;e490c2634e42e7dd203c422ed3411d157bac4cb365a9c6625aeb0366337f6d8c/layer.tar&quot;</span>,<br><span class="hljs-string">&quot;10ba19cb154d35d098f7fb9281aee5286203bf69f09c3d5ef6f6e3c22a575cfb/layer.tar&quot;</span>,<br><span class="hljs-string">&quot;da52df413b96b9950c14ac49052917cca11f147281131abf3e5851178a1da725/layer.tar&quot;</span>,<br><span class="hljs-string">&quot;5e0b05ce7a5b3a61fb022100f426eba7d779e7c3ce228f6083f2071d6b63d7b6/layer.tar&quot;</span>,<br><span class="hljs-string">&quot;0f3b22ab2e781e07560be3ab959c0e75999bfc0f52174686c336f0c201c425ed/layer.tar&quot;</span>,<br><span class="hljs-string">&quot;9b98f99c20683407f916e6c26a2f8173ee40649a951ead3c34ab3a8d34aaa254/layer.tar&quot;</span>,<br><span class="hljs-string">&quot;1577c0719014ef6aa7e14b48c2366a72d533d7d9ca630816d927b71f999b9837/layer.tar&quot;</span>,<br><span class="hljs-string">&quot;a6e47ad1309a34eb923e2a9661986112ba2426fbd35adbf0f4f88d0ba99a731b/layer.tar&quot;</span>]&#125;]<br></code></pre></td></tr></table></figure>
+
+
+
+<p><img src="/Docker%E9%95%9C%E5%83%8F%E5%88%86%E6%9E%90/WEBRESOURCE345586d3a4df28fff5cbe6c76f141627.png" srcset="/img/loading.gif" lazyload></p>
+<p>我们可以通过docker history里面的层对应这个文件目录中的层，也可以通过对比层的大小来对应找出自己想要的文件，例如找一个spring项目的classes字节码文件啥的。</p>
+<p>这里也是trivy镜像检测工具的实现原理，通过打包镜像进行镜像内容的安全组件检测扫描。</p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/%E4%BA%91%E5%AE%89%E5%85%A8/">#云安全</a>
+      
+        <a href="/tags/Docker/">#Docker</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Docker镜像分析</div>
+      <div>http://example.com/2023/03/27/Docker镜像分析/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>FanneF</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2023年3月27日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2023/03/31/%E5%AE%B9%E5%99%A8%E6%94%BB%E5%87%BB%E6%89%8B%E5%86%8C/" title="容器攻击手册">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">容器攻击手册</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2023/03/27/Serverless%E6%9E%B6%E6%9E%84%E5%AE%89%E5%85%A8%E6%A6%82%E8%A7%88/" title="Serverless架构安全概览">
+                        <span class="hidden-mobile">Serverless架构安全概览</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>
