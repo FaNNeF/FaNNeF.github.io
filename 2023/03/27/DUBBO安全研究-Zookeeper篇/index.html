@@ -13,14 +13,14 @@
   <meta http-equiv="x-ua-compatible" content="ie=edge">
   
   <meta name="theme-color" content="#2f4154">
-  <meta name="author" content="FanneF">
+  <meta name="author" content="FaNeF">
   <meta name="keywords" content="">
   
     <meta name="description" content="一、背景云环境下，Dubbo作为常用的开源高性能优秀的服务框架，在广泛使用的同时，更应关注其安全性。其架构中包含Provider、Consumer、Registry、Monitor。可从这几点展开讨论其安全性。 二、风险分析注册中心分为：Multicast注册中心、Zookeeper注册中心、Redis注册中心、Simple注册中心。 zookeeper最为常用，以zookeeper为例，分析微服">
 <meta property="og:type" content="article">
 <meta property="og:title" content="DUBBO安全研究--Zookeeper篇">
 <meta property="og:url" content="http://example.com/2023/03/27/DUBBO%E5%AE%89%E5%85%A8%E7%A0%94%E7%A9%B6-Zookeeper%E7%AF%87/index.html">
-<meta property="og:site_name" content="FanneF">
+<meta property="og:site_name" content="FaNeF">
 <meta property="og:description" content="一、背景云环境下，Dubbo作为常用的开源高性能优秀的服务框架，在广泛使用的同时，更应关注其安全性。其架构中包含Provider、Consumer、Registry、Monitor。可从这几点展开讨论其安全性。 二、风险分析注册中心分为：Multicast注册中心、Zookeeper注册中心、Redis注册中心、Simple注册中心。 zookeeper最为常用，以zookeeper为例，分析微服">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="http://example.com/DUBBO%E5%AE%89%E5%85%A8%E7%A0%94%E7%A9%B6-Zookeeper%E7%AF%87/WEBRESOURCEd33e679f424f81308830ccea33d1bb49.png">
@@ -37,7 +37,7 @@
 <meta property="og:image" content="http://example.com/DUBBO%E5%AE%89%E5%85%A8%E7%A0%94%E7%A9%B6-Zookeeper%E7%AF%87/WEBRESOURCE7b71e25842446c51670ebd702fda5995.png">
 <meta property="article:published_time" content="2023-03-27T14:24:47.000Z">
 <meta property="article:modified_time" content="2023-04-05T14:52:04.356Z">
-<meta property="article:author" content="FanneF">
+<meta property="article:author" content="FaNeF">
 <meta property="article:tag" content="云安全">
 <meta property="article:tag" content="Dubbo">
 <meta property="article:tag" content="应用安全">
@@ -46,7 +46,7 @@
   
   
   
-  <title>DUBBO安全研究--Zookeeper篇 - FanneF</title>
+  <title>DUBBO安全研究--Zookeeper篇 - FaNeF</title>
 
   <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
 
@@ -110,7 +110,7 @@
   <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
   <div class="container">
     <a class="navbar-brand" href="/">
-      <strong>FanneF</strong>
+      <strong>FaNeF</strong>
     </a>
 
     <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
@@ -143,18 +143,6 @@
               <a class="nav-link" href="/archives/">
                 <i class="iconfont icon-archive-fill"></i>
                 <span>归档</span>
-              </a>
-            </li>
-          
-        
-          
-          
-          
-          
-            <li class="nav-item">
-              <a class="nav-link" href="/categories/">
-                <i class="iconfont icon-category-fill"></i>
-                <span>分类</span>
               </a>
             </li>
           
@@ -421,7 +409,7 @@
       
         <div class="license-meta-item">
           <div>作者</div>
-          <div>FanneF</div>
+          <div>FaNeF</div>
         </div>
       
       
