@@ -18,24 +18,24 @@
   
     <meta name="description" content="一、镜像结构： 镜像分为底层驱动bootfs，当成为容器启动后会被加载进入内存然后会被unmount掉，BaseImage为rootfs存储了系统根目录系统，出了writable层其他层都是不可写的只可读，当在容器态修改底层文件内容，docker文件驱动会将旧文件拷贝一份到writable层，然后下层文件进行屏蔽处理。启动镜像是读取子镜像层是由上至下读取的，保证读取的文件是最新的。 可以通过doc">
 <meta property="og:type" content="article">
-<meta property="og:title" content="1">
+<meta property="og:title" content="Docker镜像分析">
 <meta property="og:url" content="http://example.com/2023/03/27/Docker%E9%95%9C%E5%83%8F%E5%88%86%E6%9E%90/index.html">
 <meta property="og:site_name" content="FanneF">
 <meta property="og:description" content="一、镜像结构： 镜像分为底层驱动bootfs，当成为容器启动后会被加载进入内存然后会被unmount掉，BaseImage为rootfs存储了系统根目录系统，出了writable层其他层都是不可写的只可读，当在容器态修改底层文件内容，docker文件驱动会将旧文件拷贝一份到writable层，然后下层文件进行屏蔽处理。启动镜像是读取子镜像层是由上至下读取的，保证读取的文件是最新的。 可以通过doc">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="http://example.com/001/WEBRESOURCEa8e683cbf4ef28ef1d0bad74d7888080.png">
-<meta property="og:image" content="http://example.com/001/WEBRESOURCE345586d3a4df28fff5cbe6c76f141627.png">
+<meta property="og:image" content="http://example.com/Docker%E9%95%9C%E5%83%8F%E5%88%86%E6%9E%90/WEBRESOURCEa8e683cbf4ef28ef1d0bad74d7888080.png">
+<meta property="og:image" content="http://example.com/Docker%E9%95%9C%E5%83%8F%E5%88%86%E6%9E%90/WEBRESOURCE345586d3a4df28fff5cbe6c76f141627.png">
 <meta property="article:published_time" content="2023-03-27T15:32:25.000Z">
-<meta property="article:modified_time" content="2023-04-04T15:40:24.147Z">
+<meta property="article:modified_time" content="2023-04-05T14:54:04.980Z">
 <meta property="article:author" content="FanneF">
 <meta property="article:tag" content="云安全">
 <meta property="article:tag" content="Docker">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="http://example.com/001/WEBRESOURCEa8e683cbf4ef28ef1d0bad74d7888080.png">
+<meta name="twitter:image" content="http://example.com/Docker%E9%95%9C%E5%83%8F%E5%88%86%E6%9E%90/WEBRESOURCEa8e683cbf4ef28ef1d0bad74d7888080.png">
   
   
   
-  <title>1 - FanneF</title>
+  <title>Docker镜像分析 - FanneF</title>
 
   <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
 
@@ -201,7 +201,7 @@
       <div class="banner-text text-center fade-in-up">
         <div class="h2">
           
-            <span id="subtitle" data-typed-text="1"></span>
+            <span id="subtitle" data-typed-text="Docker镜像分析"></span>
           
         </div>
 
@@ -273,12 +273,12 @@
         <div id="board">
           <article class="post-content mx-auto">
             <!-- SEO header -->
-            <h1 style="display: none">1</h1>
+            <h1 style="display: none">Docker镜像分析</h1>
             
             
               <div class="markdown-body">
                 
-                <h2 id="一、镜像结构："><a href="#一、镜像结构：" class="headerlink" title="一、镜像结构："></a>一、镜像结构：</h2><p><img src="/./001/WEBRESOURCEa8e683cbf4ef28ef1d0bad74d7888080.png" srcset="/img/loading.gif" lazyload></p>
+                <h2 id="一、镜像结构："><a href="#一、镜像结构：" class="headerlink" title="一、镜像结构："></a>一、镜像结构：</h2><p><img src="/Docker%E9%95%9C%E5%83%8F%E5%88%86%E6%9E%90/WEBRESOURCEa8e683cbf4ef28ef1d0bad74d7888080.png" srcset="/img/loading.gif" lazyload alt="WEBRESOURCEa8e683cbf4ef28ef1d0bad74d7888080"></p>
 <p>镜像分为底层驱动bootfs，当成为容器启动后会被加载进入内存然后会被unmount掉，BaseImage为rootfs存储了系统根目录系统，出了writable层其他层都是不可写的只可读，当在容器态修改底层文件内容，docker文件驱动会将旧文件拷贝一份到writable层，然后下层文件进行屏蔽处理。启动镜像是读取子镜像层是由上至下读取的，保证读取的文件是最新的。</p>
 <p>可以通过docker history命令来查看镜像层：</p>
 <figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><code class="hljs javascript">root@<span class="hljs-attr">ubuntu</span>:<span class="hljs-regexp">/var/</span>lib/docker/containers/9f2244a9fd11c8dc53c43fb46fb7864e93afc28a4b491262a88dc9fe168e2367# docker history tomcat<br><span class="hljs-variable constant_">IMAGE</span>               <span class="hljs-variable constant_">CREATED</span>             <span class="hljs-variable constant_">CREATED</span> <span class="hljs-variable constant_">BY</span>                                      <span class="hljs-variable constant_">SIZE</span>                <span class="hljs-variable constant_">COMMENT</span><br>46cfbf1293b1        <span class="hljs-number">12</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">CMD</span> [<span class="hljs-string">&quot;catalina.sh&quot;</span> <span class="hljs-string">&quot;run&quot;</span>]    0B                  <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">EXPOSE</span> <span class="hljs-number">8080</span>                  0B                  <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c set -eux;  nativeLines=<span class="hljs-string">&quot;$(catalin…   0B                  </span><br><span class="hljs-string">&lt;missing&gt;           12 days ago         /bin/sh -c set -eux;   savedAptMark=&quot;</span>$(apt-m…   <span class="hljs-number">20.</span>3MB              <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">ENV</span> <span class="hljs-variable constant_">TOMCAT_SHA512</span>=06cd51a…   0B                  <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">ENV</span> <span class="hljs-variable constant_">TOMCAT_VERSION</span>=<span class="hljs-number">9.0</span><span class="hljs-number">.50</span>    0B                  <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">ENV</span> <span class="hljs-variable constant_">TOMCAT_MAJOR</span>=<span class="hljs-number">9</span>           0B                  <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">ENV</span> <span class="hljs-variable constant_">GPG_KEYS</span>=48F8E69F6390…   0B                  <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">ENV</span> <span class="hljs-variable constant_">LD_LIBRARY_PATH</span>=<span class="hljs-regexp">/usr/</span>…   0B                  <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">ENV</span> <span class="hljs-variable constant_">TOMCAT_NATIVE_LIBDIR</span>=…   0B                  <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c #(nop) <span class="hljs-variable constant_">WORKDIR</span> /usr/local/tomcat     0B                  <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c mkdir -p <span class="hljs-string">&quot;$CATALINA_HOME&quot;</span>            0B                  <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">ENV</span> <span class="hljs-variable constant_">PATH</span>=<span class="hljs-regexp">/usr/</span>local/tomca…   0B                  <br>&lt;missing&gt;           <span class="hljs-number">12</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">ENV</span> <span class="hljs-variable constant_">CATALINA_HOME</span>=<span class="hljs-regexp">/usr/</span>lo…   0B                  <br>&lt;missing&gt;           <span class="hljs-number">13</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">CMD</span> [<span class="hljs-string">&quot;jshell&quot;</span>]               0B                  <br>&lt;missing&gt;           <span class="hljs-number">13</span> days ago         /bin/sh -c set -eux;   arch=<span class="hljs-string">&quot;$(dpkg --print-…   343MB               </span><br><span class="hljs-string">&lt;missing&gt;           13 days ago         /bin/sh -c #(nop)  ENV JAVA_VERSION=11.0.12     0B                  </span><br><span class="hljs-string">&lt;missing&gt;           13 days ago         /bin/sh -c #(nop)  ENV LANG=C.UTF-8             0B                  </span><br><span class="hljs-string">&lt;missing&gt;           13 days ago         /bin/sh -c #(nop)  ENV PATH=/usr/local/openj…   0B                  </span><br><span class="hljs-string">&lt;missing&gt;           13 days ago         /bin/sh -c &#123; echo &#x27;#/bin/sh&#x27;; echo &#x27;echo &quot;</span>$J…   27B                 <br>&lt;missing&gt;           <span class="hljs-number">13</span> days ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">ENV</span> <span class="hljs-variable constant_">JAVA_HOME</span>=<span class="hljs-regexp">/usr/</span>local/…   0B                  <br>&lt;missing&gt;           <span class="hljs-number">13</span> days ago         /bin/sh -c set -eux;  apt-get update;  apt-g…   <span class="hljs-number">11.</span>1MB              <br>&lt;missing&gt;           <span class="hljs-number">2</span> weeks ago         /bin/sh -c apt-get update &amp;&amp; apt-get install…   146MB               <br>&lt;missing&gt;           <span class="hljs-number">2</span> weeks ago         /bin/sh -c set -ex;  <span class="hljs-keyword">if</span> ! command -v gpg &gt; /…   <span class="hljs-number">17.</span>5MB              <br>&lt;missing&gt;           <span class="hljs-number">2</span> weeks ago         /bin/sh -c set -eux;  apt-get update;  apt-g…   <span class="hljs-number">16.</span>5MB              <br>&lt;missing&gt;           <span class="hljs-number">2</span> weeks ago         /bin/sh -c #(nop)  <span class="hljs-variable constant_">CMD</span> [<span class="hljs-string">&quot;bash&quot;</span>]                 0B                  <br>&lt;missing&gt;           <span class="hljs-number">2</span> weeks ago         /bin/sh -c #(nop) <span class="hljs-variable constant_">ADD</span> <span class="hljs-attr">file</span>:e952f6979e4b0ead0…   114MB               <br></code></pre></td></tr></table></figure>
@@ -312,7 +312,7 @@
 
 
 
-<p><img src="/./001/WEBRESOURCE345586d3a4df28fff5cbe6c76f141627.png" srcset="/img/loading.gif" lazyload></p>
+<p><img src="/Docker%E9%95%9C%E5%83%8F%E5%88%86%E6%9E%90/WEBRESOURCE345586d3a4df28fff5cbe6c76f141627.png" srcset="/img/loading.gif" lazyload></p>
 <p>我们可以通过docker history里面的层对应这个文件目录中的层，也可以通过对比层的大小来对应找出自己想要的文件，例如找一个spring项目的classes字节码文件啥的。</p>
 <p>这里也是trivy镜像检测工具的实现原理，通过打包镜像进行镜像内容的安全组件检测扫描。</p>
 
@@ -341,7 +341,7 @@
 
   <div class="license-box my-3">
     <div class="license-title">
-      <div>1</div>
+      <div>Docker镜像分析</div>
       <div>http://example.com/2023/03/27/Docker镜像分析/</div>
     </div>
     <div class="license-meta">
